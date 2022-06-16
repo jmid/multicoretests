@@ -148,9 +148,9 @@ Util.set_ci_printing ()
 QCheck_runner.run_tests_main
   (let count = 1000 in
    [RT_int.agree_test        ~count ~name:"global int ref test";
-    RT_int.agree_test_par    ~count ~name:"global int ref test";
-    RT_int_GC.agree_test_par ~count ~name:"global int ref test (w/AddGC functor)";
+    RT_int.agree_test_par    ~count ~name:"global int ref test" `Domain;
+    RT_int_GC.agree_test_par ~count ~name:"global int ref test (w/AddGC functor)" `Domain;
     RT_int.agree_test        ~count ~name:"global int64 ref test";
-    RT_int.agree_test_par    ~count ~name:"global int64 ref test";
-    RT_int_GC.agree_test_par ~count ~name:"global int64 ref test (w/AddGC functor)";
+    RT_int.agree_test_par    ~count ~name:"global int64 ref test" `Domain;
+    RT_int_GC.agree_test_par ~count ~name:"global int64 ref test (w/AddGC functor)" `Domain;
    ])

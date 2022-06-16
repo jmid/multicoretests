@@ -119,7 +119,7 @@ module Make(Spec : StmSpec)
   (*val shrink_triple : ...*)
     val arb_cmds_par : int -> int -> (Spec.cmd list * Spec.cmd list * Spec.cmd list) arbitrary
     val agree_prop_par         : (Spec.cmd list * Spec.cmd list * Spec.cmd list) -> bool
-    val agree_test_par         : count:int -> name:string -> Test.t
+    val agree_test_par         : count:int -> name:string -> [ `Domain | `Thread ] -> Test.t
 end
 =
 struct
@@ -352,6 +352,28 @@ struct
            triple (return seq_pref) par_gen1 par_gen2) in
     make ~print:(print_triple_vertical Spec.show_cmd) ~shrink:shrink_triple gen_triple
 
+  exception ThreadNotFinished
+  
+  (* Parallel agreement property based on [Threads] *)
+  let agree_prop_thread (seq_pref,cmds1,cmds2) =
+    assume (all_interleavings_ok seq_pref cmds1 cmds2 Spec.init_state);
+    let sut = Spec.init_sut () in
+    let obs1,obs2 = ref (Error ThreadNotFinished), ref (Error ThreadNotFinished) in
+    let pref_obs = interp_sut_res sut seq_pref in
+    let wait = ref true in
+    let th1 = Thread.create (fun () -> while !wait do Thread.yield () done; obs1 := try Ok (interp_sut_res sut cmds1) with exn -> Error exn) () in
+    let th2 = Thread.create (fun () -> wait := false; obs2 := try Ok (interp_sut_res sut cmds2) with exn -> Error exn) () in
+    let () = Thread.join th1 in
+    let () = Thread.join th2 in
+    let obs1 = match !obs1 with Ok v -> v | Error exn -> raise exn in
+    let obs2 = match !obs2 with Ok v -> v | Error exn -> raise exn in
+    let ()   = Spec.cleanup sut in
+    check_obs pref_obs obs1 obs2 Spec.init_state
+      || Test.fail_reportf "  Results incompatible with linearized model\n\n%s"
+         @@ print_triple_vertical ~fig_indent:5 ~res_width:35
+           (fun (c,r) -> Printf.sprintf "%s : %s" (Spec.show_cmd c) (show_res r))
+           (pref_obs,obs1,obs2)
+   
   (* Parallel agreement property based on [Domain] *)
   let agree_prop_par (seq_pref,cmds1,cmds2) =
     assume (all_interleavings_ok seq_pref cmds1 cmds2 Spec.init_state);
@@ -372,13 +394,20 @@ struct
            (pref_obs,obs1,obs2)
 
   (* Parallel agreement test based on [Domain] which combines [repeat] and [~retries] *)
-  let agree_test_par ~count ~name =
+  let mk_test ~count ~name prop with_name =
     let rep_count = 25 in
     let seq_len,par_len = 20,12 in
     let max_gen = 3*count in (* precond filtering may require extra generation: max. 3*count though *)
-    Test.make ~retries:15 ~max_gen ~count ~name:("parallel " ^ name)
+    Test.make ~retries:15 ~max_gen ~count ~name:("parallel " ^ name ^ with_name)
       (arb_cmds_par seq_len par_len)
-      (repeat rep_count agree_prop_par) (* 25 times each, then 25 * 15 times when shrinking *)
+      (repeat rep_count prop) (* 25 times each, then 25 * 15 times when shrinking *)
+
+  let agree_test_par ~count ~name (lib : [ `Domain | `Thread ]) =
+    let prop,with_name = match lib with
+      | `Domain -> agree_prop_par, "with Domain"
+      | `Thread -> agree_prop_thread, "with Thread"
+    in
+    mk_test ~count ~name prop with_name
 end
 
 (** ********************************************************************** *)

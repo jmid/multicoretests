@@ -120,7 +120,7 @@ QCheck_runner.run_tests_main
    [LTlazy.agree_test        ~count ~name:"lazy test";
     LTfromval.agree_test     ~count ~name:"lazy test from_val";
     LTfromfun.agree_test     ~count ~name:"lazy test from_fun";
-    LTlazy.agree_test_par    ~count ~name:"lazy test";
-    LTfromval.agree_test_par ~count ~name:"lazy test from_val";
-    LTfromfun.agree_test_par ~count ~name:"lazy test from_fun";
+    LTlazy.agree_test_par    ~count ~name:"lazy test" `Domain;
+    LTfromval.agree_test_par ~count ~name:"lazy test from_val" `Domain;
+    LTfromfun.agree_test_par ~count ~name:"lazy test from_fun" `Domain;
    ])
