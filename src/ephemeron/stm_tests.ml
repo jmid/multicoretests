@@ -133,13 +133,13 @@ module EphemeronModel =
       | _ -> false
   end
 
-module ETest = STM.Make(EphemeronModel)
+module ETest_Seq = STM_Seq.Make(EphemeronModel)
+module ETest_Dom = STM_Domain.Make(EphemeronModel)
 ;;
 Util.set_ci_printing ()
 ;;
 QCheck_runner.run_tests_main
   (let count = 1000 in
-   [ ETest.agree_test     ~count ~name:"Ephemeron test";          (* succeed *)
-     ETest.agree_test_par ~count ~name:"Parallel Ephemeron test"; (* fail *)
+   [ ETest_Seq.agree_test     ~count ~name:"Ephemeron test";          (* succeed *)
+     ETest_Dom.agree_test_par ~count ~name:"Parallel Ephemeron test"; (* fail *)
   ])
-

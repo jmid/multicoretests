@@ -49,14 +49,16 @@ module Int = struct
   let of_int (i:int) : t = i
 end
 
-module CLT_int = STM.Make(CLConf(Int))
-module CLT_int64 = STM.Make(CLConf(Int64))
+module CLT_int_Seq = STM_Seq.Make(CLConf(Int))
+module CLT_int_Dom = STM_Domain.Make(CLConf(Int))
+module CLT_int64_Seq = STM_Seq.Make(CLConf(Int64))
+module CLT_int64_Dom = STM_Domain.Make(CLConf(Int64))
 ;;
 Util.set_ci_printing ()
 ;;
 QCheck_runner.run_tests_main
   (let count = 1000 in
-   [CLT_int.agree_test       ~count ~name:"int CList test";
-    CLT_int64.agree_test     ~count ~name:"int64 CList test";
-    CLT_int.agree_test_par   ~count ~name:"int CList test" `Domain;
-    CLT_int64.agree_test_par ~count ~name:"int64 CList test" `Domain])
+   [CLT_int_Seq.agree_test       ~count ~name:"int CList test";
+    CLT_int64_Seq.agree_test     ~count ~name:"int64 CList test";
+    CLT_int_Dom.agree_test_par   ~count ~name:"int CList test" ;
+    CLT_int64_Dom.agree_test_par ~count ~name:"int64 CList test" ])

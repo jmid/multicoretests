@@ -2,7 +2,6 @@
 
 open QCheck
 open STM
-
 module Ws_deque = Lockfree.Ws_deque
 
 module WSDConf =
@@ -58,30 +57,31 @@ struct
     | _,_ -> false
 end
 
-module WSDT = STM.Make(WSDConf)
+module WSDT_Seq = STM_Seq.Make(WSDConf)
+module WSDT_Dom = STM_Domain.Make(WSDConf)
 
 
 (*
 ;;
 QCheck_runner.run_tests ~verbose:true [
-    WSDT.agree_test     ~count:1_000 ~name:"sequential ws_deque test";
-    WSDT.agree_test_par ~count:1_000 ~name:"parallel ws_deque test (w/repeat)";
+    WSDT_Seq.agree_test     ~count:1_000 ~name:"sequential ws_deque test";
+    WSDT_Seq.agree_test_par ~count:1_000 ~name:"parallel ws_deque test (w/repeat)";
     agree_test_par      ~count:1_000 ~name:"parallel ws_deque test (w/non_det module)";
   ]
  *)
 
 let agree_prop_par =
   (fun (seq_pref,owner,stealer) ->
-    assume (WSDT.cmds_ok WSDConf.init_state (seq_pref@owner));
-    assume (WSDT.cmds_ok WSDConf.init_state (seq_pref@stealer));
+    assume (WSDT_Seq.cmds_ok WSDConf.init_state (seq_pref@owner));
+    assume (WSDT_Seq.cmds_ok WSDConf.init_state (seq_pref@stealer));
     let sut = WSDConf.init_sut () in
-    let pref_obs = WSDT.interp_sut_res sut seq_pref in
+    let pref_obs = WSDT_Seq.interp_sut_res sut seq_pref in
     let sema = Semaphore.Binary.make false in
-    let stealer_dom = Domain.spawn (fun () -> Semaphore.Binary.release sema; WSDT.interp_sut_res sut stealer) in
+    let stealer_dom = Domain.spawn (fun () -> Semaphore.Binary.release sema; WSDT_Seq.interp_sut_res sut stealer) in
     while not (Semaphore.Binary.try_acquire sema) do Domain.cpu_relax() done;
-    let own_obs = WSDT.interp_sut_res sut owner in
+    let own_obs = WSDT_Seq.interp_sut_res sut owner in
     let stealer_obs = Domain.join stealer_dom in
-    let res = WSDT.check_obs pref_obs own_obs stealer_obs WSDConf.init_state in
+    let res = WSDT_Seq.check_obs pref_obs own_obs stealer_obs WSDConf.init_state in
     let () = WSDConf.cleanup sut in
     res ||
       Test.fail_reportf "  Results incompatible with linearized model:\n\n%s"
@@ -99,10 +99,10 @@ let shrink_triple =
 
 let arb_triple =
   let seq_len,par_len = 20,15 in
-  let seq_pref_gen = WSDT.gen_cmds_size WSDConf.init_state (Gen.int_bound seq_len) in
+  let seq_pref_gen = WSDT_Seq.gen_cmds_size WSDConf.init_state (Gen.int_bound seq_len) in
   let triple_gen = Gen.(seq_pref_gen >>= fun seq_pref ->
                         let spawn_state = List.fold_left (fun st c -> WSDConf.next_state c st) WSDConf.init_state seq_pref in
-                        let owner_gen = WSDT.gen_cmds_size spawn_state (Gen.int_bound par_len) in
+                        let owner_gen = WSDT_Seq.gen_cmds_size spawn_state (Gen.int_bound par_len) in
                         let stealer_gen = list_size (int_bound par_len) (WSDConf.stealer_cmd spawn_state).gen in
                         map2 (fun owner stealer -> (seq_pref,owner,stealer)) owner_gen stealer_gen) in
   make ~print:(Util.print_triple_vertical ~center_prefix:false WSDConf.show_cmd) ~shrink:shrink_triple triple_gen
@@ -111,17 +111,17 @@ let arb_triple =
 let agree_test_par ~count ~name =
   let rep_count = 50 in
   Test.make ~retries:10 ~count ~name
-    arb_triple (STM.repeat rep_count agree_prop_par) (* 50 times each, then 50 * 10 times when shrinking *)
+    arb_triple (repeat rep_count agree_prop_par) (* 50 times each, then 50 * 10 times when shrinking *)
 
 (* Note: this can generate, e.g., pop commands/actions in different threads, thus violating the spec. *)
-let agree_test_par_negative ~count ~name = WSDT.agree_test_par ~count ~name
+let agree_test_par_negative ~count ~name = WSDT_Dom.agree_test_par ~count ~name
 
 ;;
 Util.set_ci_printing ()
 ;;
 QCheck_runner.run_tests_main
   (let count = 1000 in [
-    WSDT.agree_test         ~count ~name:"ws_deque test";
+    WSDT_Seq.agree_test     ~count ~name:"ws_deque test";
     agree_test_par          ~count ~name:"parallel ws_deque test";
-    agree_test_par_negative ~count ~name:"ws_deque test, negative" `Domain;
+    agree_test_par_negative ~count ~name:"ws_deque test, negative";
   ])
