@@ -5,17 +5,34 @@
  (name default)
  (package multicoretests)
  (deps
-   ref_stm_tests.exe
+   ref_stm_seq_tests.exe
+   ref_stm_dom_tests.exe
+   ref_stm_thread_tests.exe
    conclist_stm_tests.exe
    domain_lin_tests.exe
    thread_lin_tests.exe
    effect_lin_tests.exe))
 
-(executable
- (name ref_stm_tests)
- (modules ref_stm_tests)
+(library
+ (name ref_stm_spec)
+ (modules ref_stm_spec)
  (libraries qcheck STM)
  (preprocess (pps ppx_deriving.show ppx_deriving.eq)))
+
+(executable
+ (name ref_stm_seq_tests)
+ (modules ref_stm_seq_tests)
+ (libraries ref_stm_spec STM))
+
+(executable
+ (name ref_stm_dom_tests)
+ (modules ref_stm_dom_tests)
+ (libraries ref_stm_spec STM))
+
+(executable
+ (name ref_stm_thread_tests)
+ (modules ref_stm_thread_tests)
+ (libraries ref_stm_spec STM))
 
 (env
  (_
