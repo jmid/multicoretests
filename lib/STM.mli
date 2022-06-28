@@ -88,7 +88,7 @@ sig
 end
 
 module AddGC : functor (Spec: Spec) -> Spec
-module STM_Seq : sig
+module Seq : sig
   module Make : functor (Spec: Spec) -> sig
                   val cmds_ok: Spec.state -> Spec.cmd list -> bool
                   val interp_sut_res: Spec.sut -> Spec.cmd list -> (Spec.cmd * res) list
@@ -102,14 +102,14 @@ module STM_Seq : sig
                 end
 end
 
-module STM_Domain : sig
+module Domain : sig
   module Make : functor (Spec: Spec) -> sig
                   val agree_prop_par: (Spec.cmd list * Spec.cmd list * Spec.cmd list) -> bool
                   val agree_test_par: count:int -> name:string -> Test.t
                 end
 end
 
-module STM_Thread : sig
+module Thread : sig
   module Make : functor (Spec: Spec) -> sig
                   val agree_prop_conc: (Spec.cmd list * Spec.cmd list * Spec.cmd list) -> bool
                   val agree_test_conc: count:int -> name:string -> Test.t
