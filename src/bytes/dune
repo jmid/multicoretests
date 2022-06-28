@@ -1,0 +1,42 @@
+;; Tests of the stdlib Bytes library
+
+;; this prevents the tests from running on a default build
+(alias
+ (name default)
+ (package multicoretests)
+ (deps bytes_test.exe lin_tests.exe))
+
+
+;; STM test 
+
+(executable
+ (name bytes_test)
+ (modules bytes_test)
+ (libraries qcheck STM)
+ (preprocess (pps ppx_deriving.show ppx_deriving.eq)))
+
+
+
+;; Linearizability tests utilizing ppx_deriving_qcheck
+
+(executable
+ (name lin_tests)
+(foreign_stubs (language c) (names stubs))
+ (modules lin_tests)
+(libraries multicorecheck.lin))
+
+(rule
+ (alias runtest)
+ (package multicoretests)
+ (deps lin_tests.exe stubs.c)
+ (action
+  (progn
+   (bash "(./lin_tests.exe --no-colors --verbose || echo 'test run triggered an error') | tee lin-output.txt")
+   (run %{bin:check_error_count} "bytes/lin_tests" 1 lin-output.txt))))
+
+;; lin_bug
+(executable
+ (name lin_bug)
+ (modules lin_bug)
+(libraries qcheck))
+
